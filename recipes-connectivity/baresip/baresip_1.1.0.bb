@@ -23,6 +23,7 @@ EXTRA_OEMAKE = "\
     OS=linux \
     ARCH=${TARGET_ARCH} \
     DESTDIR=${D} \
+    V=1 \
 "
 
 inherit pkgconfig

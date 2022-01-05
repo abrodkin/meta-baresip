@@ -35,6 +35,22 @@ EXTRA_OEMAKE += " SYSROOT=${STAGING_EXECPREFIXDIR}"
 
 inherit pkgconfig
 
+PACKAGECONFIG ??= "\
+    amr fdk-aac ffmpeg gstreamer sdl2 \
+    ${@bb.utils.filter('DISTRO_FEATURES', 'alsa directfb', d)} \
+"
+
+# Baresip auto-detects supported components during its build process
+# thus nothing is done here except we add components which might be
+# detected and used in run-time
+PACKAGECONFIG[alsa] = ",,alsa-lib"
+PACKAGECONFIG[amr] = ",,opencore-amr"
+PACKAGECONFIG[directfb] = ",,directfb"
+PACKAGECONFIG[fdk-aac] = ",,fdk-aac"
+PACKAGECONFIG[ffmpeg] = ",,ffmpeg"
+PACKAGECONFIG[gstreamer] = ",,gstreamer1.0"
+PACKAGECONFIG[sdl2] = ",,libsdl2"
+
 do_configure() {
     :
 }

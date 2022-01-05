@@ -24,6 +24,13 @@ EXTRA_OEMAKE = "\
     V=1 \
 "
 
+# Module detection magic in libre up to v2.0.1 is implmented
+# by checking of headers supposedly avaialble on target system
+# if certain libs or packages are installed.
+# In the next release there will be a more robust test via
+# compilation of tests, see https://github.com/baresip/re/commit/2697dcd
+EXTRA_OEMAKE += " SYSROOT=${STAGING_EXECPREFIXDIR}"
+
 inherit pkgconfig
 
 do_configure() {

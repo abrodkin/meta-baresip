@@ -1,0 +1,306 @@
+From 140bf8e5c5e568e1d61076c62186a3850832cbe7 Mon Sep 17 00:00:00 2001
+From: "Alfred E. Heggestad" <alfred.heggestad@gmail.com>
+Date: Sun, 25 Apr 2021 11:46:20 +0200
+Subject: [PATCH 4/6] Vidsrc add packet handler (#1402)
+
+* vidsrc: add packet handler
+
+* v4l2: fix warning
+
+Upstream-Status: Backport [https://github.com/baresip/baresip/commit/646ffdf6974ab700bf8e553709c463b95d336bf7]
+Signed-off-by: Alexey Brodkin <alexey.brodkin@gmail.com>
+---
+ include/baresip.h               | 10 ++++++++++
+ modules/avcapture/avcapture.m   |  2 ++
+ modules/avformat/mod_avformat.h |  1 +
+ modules/avformat/video.c        |  2 ++
+ modules/dshow/dshow.cpp         |  1 +
+ modules/fakevideo/fakevideo.c   |  2 ++
+ modules/rst/video.c             |  2 ++
+ modules/v4l2/v4l2.c             |  2 ++
+ modules/v4l2_codec/v4l2_codec.c |  2 ++
+ modules/vidbridge/src.c         |  2 ++
+ modules/vidbridge/vidbridge.h   |  1 +
+ modules/x11grab/x11grab.c       |  2 ++
+ src/video.c                     |  5 +++--
+ src/vidsrc.c                    |  2 +-
+ test/mock/mock_vidsrc.c         |  2 ++
+ 15 files changed, 35 insertions(+), 3 deletions(-)
+
+diff --git a/include/baresip.h b/include/baresip.h
+index 61757e48..d09fd30f 100644
+--- a/include/baresip.h
++++ b/include/baresip.h
+@@ -956,6 +956,15 @@ struct vidsrc_prm {
+ 	int fmt;          /**< Wanted pixel format (enum vidfmt)           */
+ };
+ 
++struct vidpacket {
++	uint8_t *buf;        /**< Buffer memory                     */
++	size_t size;         /**< Size of buffer                    */
++	uint64_t timestamp;  /**< Timestamp in VIDEO_TIMEBASE units */
++};
++
++/* Declare function pointer */
++typedef void (vidsrc_packet_h)(struct vidpacket *packet, void *arg);
++
+ /**
+  * Provides video frames to the core
+  *
+@@ -972,6 +981,7 @@ typedef int  (vidsrc_alloc_h)(struct vidsrc_st **vsp, const struct vidsrc *vs,
+ 			      const struct vidsz *size,
+ 			      const char *fmt, const char *dev,
+ 			      vidsrc_frame_h *frameh,
++			      vidsrc_packet_h  *packeth,
+ 			      vidsrc_error_h *errorh, void *arg);
+ 
+ typedef void (vidsrc_update_h)(struct vidsrc_st *st, struct vidsrc_prm *prm,
+diff --git a/modules/avcapture/avcapture.m b/modules/avcapture/avcapture.m
+index 66eb67d4..93f7f28f 100644
+--- a/modules/avcapture/avcapture.m
++++ b/modules/avcapture/avcapture.m
+@@ -317,6 +317,7 @@ static int alloc(struct vidsrc_st **stp, const struct vidsrc *vs,
+ 		 struct media_ctx **ctx, struct vidsrc_prm *prm,
+ 		 const struct vidsz *size, const char *fmt,
+ 		 const char *dev, vidsrc_frame_h *frameh,
++		 vidsrc_packet_h *packeth,
+ 		 vidsrc_error_h *errorh, void *arg)
+ {
+ 	NSAutoreleasePool *pool;
+@@ -327,6 +328,7 @@ static int alloc(struct vidsrc_st **stp, const struct vidsrc *vs,
+ 	(void)prm;
+ 	(void)fmt;
+ 	(void)dev;
++	(void)packeth;
+ 	(void)errorh;
+ 	(void)vs;
+ 
+diff --git a/modules/avformat/mod_avformat.h b/modules/avformat/mod_avformat.h
+index 7f476bc5..ad8e4919 100644
+--- a/modules/avformat/mod_avformat.h
++++ b/modules/avformat/mod_avformat.h
+@@ -42,5 +42,6 @@ int  avformat_video_alloc(struct vidsrc_st **stp, const struct vidsrc *vs,
+ 			  struct media_ctx **ctx, struct vidsrc_prm *prm,
+ 			  const struct vidsz *size, const char *fmt,
+ 			  const char *dev, vidsrc_frame_h *frameh,
++			  vidsrc_packet_h *packeth,
+ 			  vidsrc_error_h *errorh, void *arg);
+ void avformat_video_decode(struct shared *st, AVPacket *pkt);
+diff --git a/modules/avformat/video.c b/modules/avformat/video.c
+index 28a73722..197d262b 100644
+--- a/modules/avformat/video.c
++++ b/modules/avformat/video.c
+@@ -50,12 +50,14 @@ int avformat_video_alloc(struct vidsrc_st **stp, const struct vidsrc *vs,
+ 			 struct media_ctx **ctx, struct vidsrc_prm *prm,
+ 			 const struct vidsz *size, const char *fmt,
+ 			 const char *dev, vidsrc_frame_h *frameh,
++			 vidsrc_packet_h *packeth,
+ 			 vidsrc_error_h *errorh, void *arg)
+ {
+ 	struct vidsrc_st *st;
+ 	int err = 0;
+ 
+ 	(void)fmt;
++	(void)packeth;
+ 	(void)errorh;
+ 
+ 	if (!stp || !vs || !prm || !size || !frameh)
+diff --git a/modules/dshow/dshow.cpp b/modules/dshow/dshow.cpp
+index 540adb0b..c5ee70a8 100644
+--- a/modules/dshow/dshow.cpp
++++ b/modules/dshow/dshow.cpp
+@@ -478,6 +478,7 @@ static int alloc(struct vidsrc_st **stp, const struct vidsrc *vs,
+ 		 const struct vidsz *size,
+ 		 const char *fmt, const char *dev,
+ 		 vidsrc_frame_h *frameh,
++		 vidsrc_packet_h  *packeth,
+ 		 vidsrc_error_h *errorh, void *arg)
+ {
+ 	struct vidsrc_st *st;
+diff --git a/modules/fakevideo/fakevideo.c b/modules/fakevideo/fakevideo.c
+index e50bc692..1c924622 100644
+--- a/modules/fakevideo/fakevideo.c
++++ b/modules/fakevideo/fakevideo.c
+@@ -124,6 +124,7 @@ static int src_alloc(struct vidsrc_st **stp, const struct vidsrc *vs,
+ 		     struct media_ctx **ctx, struct vidsrc_prm *prm,
+ 		     const struct vidsz *size, const char *fmt,
+ 		     const char *dev, vidsrc_frame_h *frameh,
++		     vidsrc_packet_h *packeth,
+ 		     vidsrc_error_h *errorh, void *arg)
+ {
+ 	struct vidsrc_st *st;
+@@ -133,6 +134,7 @@ static int src_alloc(struct vidsrc_st **stp, const struct vidsrc *vs,
+ 	(void)ctx;
+ 	(void)fmt;
+ 	(void)dev;
++	(void)packeth;
+ 	(void)errorh;
+ 	(void)vs;
+ 
+diff --git a/modules/rst/video.c b/modules/rst/video.c
+index c7702f20..7ca6f209 100644
+--- a/modules/rst/video.c
++++ b/modules/rst/video.c
+@@ -194,12 +194,14 @@ static int alloc_handler(struct vidsrc_st **stp, const struct vidsrc *vs,
+ 			 struct media_ctx **ctx, struct vidsrc_prm *prm,
+ 			 const struct vidsz *size, const char *fmt,
+ 			 const char *dev, vidsrc_frame_h *frameh,
++			 vidsrc_packet_h *packeth,
+ 			 vidsrc_error_h *errorh, void *arg)
+ {
+ 	struct vidsrc_st *st;
+ 	int err;
+ 
+ 	(void)fmt;
++	(void)packeth;
+ 	(void)errorh;
+ 
+ 	if (!stp || !vs || !prm || !size || !frameh)
+diff --git a/modules/v4l2/v4l2.c b/modules/v4l2/v4l2.c
+index cb6a150d..608ef01e 100644
+--- a/modules/v4l2/v4l2.c
++++ b/modules/v4l2/v4l2.c
+@@ -484,6 +484,7 @@ static int alloc(struct vidsrc_st **stp, const struct vidsrc *vs,
+ 		 struct media_ctx **ctx, struct vidsrc_prm *prm,
+ 		 const struct vidsz *size, const char *fmt,
+ 		 const char *dev, vidsrc_frame_h *frameh,
++		 vidsrc_packet_h  *packeth,
+ 		 vidsrc_error_h *errorh, void *arg)
+ {
+ 	struct vidsrc_st *st;
+@@ -493,6 +494,7 @@ static int alloc(struct vidsrc_st **stp, const struct vidsrc *vs,
+ 	(void)ctx;
+ 	(void)prm;
+ 	(void)fmt;
++	(void)packeth;
+ 	(void)errorh;
+ 
+ 	if (!stp || !size || !frameh)
+diff --git a/modules/v4l2_codec/v4l2_codec.c b/modules/v4l2_codec/v4l2_codec.c
+index fbcf6349..3492717a 100644
+--- a/modules/v4l2_codec/v4l2_codec.c
++++ b/modules/v4l2_codec/v4l2_codec.c
+@@ -537,6 +537,7 @@ static int src_alloc(struct vidsrc_st **stp, const struct vidsrc *vs,
+ 		     struct media_ctx **ctx, struct vidsrc_prm *prm,
+ 		     const struct vidsz *size, const char *fmt,
+ 		     const char *dev, vidsrc_frame_h *frameh,
++		     vidsrc_packet_h  *packeth,
+ 		     vidsrc_error_h *errorh, void *arg)
+ {
+ 	struct vidsrc_st *st;
+@@ -547,6 +548,7 @@ static int src_alloc(struct vidsrc_st **stp, const struct vidsrc *vs,
+ 	(void)prm;
+ 	(void)fmt;
+ 	(void)errorh;
++	(void)packeth;
+ 	(void)arg;
+ 
+ 	if (!stp || !size || !frameh)
+diff --git a/modules/vidbridge/src.c b/modules/vidbridge/src.c
+index d58a23e2..8ab7d66b 100644
+--- a/modules/vidbridge/src.c
++++ b/modules/vidbridge/src.c
+@@ -25,12 +25,14 @@ int vidbridge_src_alloc(struct vidsrc_st **stp, const struct vidsrc *vs,
+ 			struct media_ctx **ctx, struct vidsrc_prm *prm,
+ 			const struct vidsz *size, const char *fmt,
+ 			const char *dev, vidsrc_frame_h *frameh,
++			vidsrc_packet_h *packeth,
+ 			vidsrc_error_h *errorh, void *arg)
+ {
+ 	struct vidsrc_st *st;
+ 	int err;
+ 	(void)ctx;
+ 	(void)fmt;
++	(void)packeth;
+ 	(void)errorh;
+ 	(void)vs;
+ 
+diff --git a/modules/vidbridge/vidbridge.h b/modules/vidbridge/vidbridge.h
+index 283e821c..73745912 100644
+--- a/modules/vidbridge/vidbridge.h
++++ b/modules/vidbridge/vidbridge.h
+@@ -38,6 +38,7 @@ int vidbridge_src_alloc(struct vidsrc_st **stp, const struct vidsrc *vs,
+ 			struct media_ctx **ctx, struct vidsrc_prm *prm,
+ 			const struct vidsz *size, const char *fmt,
+ 			const char *dev, vidsrc_frame_h *frameh,
++			vidsrc_packet_h  *packeth,
+ 			vidsrc_error_h *errorh, void *arg);
+ struct vidsrc_st *vidbridge_src_find(const char *device);
+ void vidbridge_src_input(struct vidsrc_st *st,
+diff --git a/modules/x11grab/x11grab.c b/modules/x11grab/x11grab.c
+index 524c22e6..69b8be8a 100644
+--- a/modules/x11grab/x11grab.c
++++ b/modules/x11grab/x11grab.c
+@@ -154,6 +154,7 @@ static int alloc(struct vidsrc_st **stp, const struct vidsrc *vs,
+ 		 struct media_ctx **ctx, struct vidsrc_prm *prm,
+ 		 const struct vidsz *size, const char *fmt,
+ 		 const char *dev, vidsrc_frame_h *frameh,
++		 vidsrc_packet_h  *packeth,
+ 		 vidsrc_error_h *errorh, void *arg)
+ {
+ 	struct vidsrc_st *st;
+@@ -161,6 +162,7 @@ static int alloc(struct vidsrc_st **stp, const struct vidsrc *vs,
+ 
+ 	(void)ctx;
+ 	(void)fmt;
++	(void)packeth;
+ 	(void)errorh;
+ 	(void)vs;
+ 
+diff --git a/src/video.c b/src/video.c
+index ba195822..57f2c201 100644
+--- a/src/video.c
++++ b/src/video.c
+@@ -1146,7 +1146,7 @@ int video_start_source(struct video *v, struct media_ctx **ctx)
+ 
+ 		err = vs->alloch(&vtx->vsrc, vs, ctx, &vtx->vsrc_prm,
+ 				 &vtx->vsrc_size, NULL, v->vtx.device,
+-				 vidsrc_frame_handler,
++				 vidsrc_frame_handler, NULL,
+ 				 vidsrc_error_handler, vtx);
+ 		if (err) {
+ 			warning("video: could not set source to"
+@@ -1603,7 +1603,8 @@ int video_set_source(struct video *v, const char *name, const char *dev)
+ 
+ 	err = vs->alloch(&vtx->vsrc, vs, NULL, &vtx->vsrc_prm,
+ 			 &vtx->vsrc_size, NULL, dev,
+-			 vidsrc_frame_handler, vidsrc_error_handler, vtx);
++			 vidsrc_frame_handler, NULL,
++			 vidsrc_error_handler, vtx);
+ 	if (err)
+ 		return err;
+ 
+diff --git a/src/vidsrc.c b/src/vidsrc.c
+index 7c977182..9608ec78 100644
+--- a/src/vidsrc.c
++++ b/src/vidsrc.c
+@@ -110,5 +110,5 @@ int vidsrc_alloc(struct vidsrc_st **stp, struct list *vidsrcl,
+ 		return ENOENT;
+ 
+ 	return vs->alloch(stp, vs, ctx, prm, size, fmt, dev,
+-			  frameh, errorh, arg);
++			  frameh, NULL, errorh, arg);
+ }
+diff --git a/test/mock/mock_vidsrc.c b/test/mock/mock_vidsrc.c
+index 2663cdd6..adb4ce0d 100644
+--- a/test/mock/mock_vidsrc.c
++++ b/test/mock/mock_vidsrc.c
+@@ -45,6 +45,7 @@ static int mock_vidsrc_alloc(struct vidsrc_st **stp, const struct vidsrc *vs,
+ 			     struct media_ctx **ctx, struct vidsrc_prm *prm,
+ 			     const struct vidsz *size, const char *fmt,
+ 			     const char *dev, vidsrc_frame_h *frameh,
++			     vidsrc_packet_h *packeth,
+ 			     vidsrc_error_h *errorh, void *arg)
+ {
+ 	struct vidsrc_st *st;
+@@ -52,6 +53,7 @@ static int mock_vidsrc_alloc(struct vidsrc_st **stp, const struct vidsrc *vs,
+ 	(void)ctx;
+ 	(void)fmt;
+ 	(void)dev;
++	(void)packeth;
+ 	(void)errorh;
+ 	(void)vs;
+ 
+-- 
+2.25.1
+

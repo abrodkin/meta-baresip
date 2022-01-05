@@ -1,0 +1,60 @@
+From 2b27c9cd7aebc38380ec5c7056114b591e569554 Mon Sep 17 00:00:00 2001
+From: Alexey Brodkin <alexey.brodkin@gmail.com>
+Date: Wed, 5 Jan 2022 21:01:29 +0300
+Subject: [PATCH 6/6] avcodec: Enable pass-through for more codecs
+
+On initial submisson of "video passthrough",
+see https://github.com/baresip/baresip/pull/1418
+packetizeh() call-back was added to only 1 codec: "h265_1",
+while avcodec_packetize() itself supports much more
+(not to mention both h264 flavors): h263, h264 & h265.
+
+That makes the current implementation to fail on a default
+configuration like that:
+----------------------->8--------------------
+video: Skipping Packet as Copy Handler not initialized ..
+video: Skipping Packet as Copy Handler not initialized ..
+video: Skipping Packet as Copy Handler not initialized ..
+----------------------->8--------------------
+
+Fix that by properly initializing all call-backs,
+though I haven't tested h263 & h265 since I don't have
+such sources handy.
+
+Upstream-Status: Submitted [https://github.com/baresip/baresip/pull/1692]
+Signed-off-by: Alexey Brodkin <alexey.brodkin@gmail.com>
+---
+ modules/avcodec/avcodec.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/modules/avcodec/avcodec.c b/modules/avcodec/avcodec.c
+index 714c6f44..8c9e1883 100644
+--- a/modules/avcodec/avcodec.c
++++ b/modules/avcodec/avcodec.c
+@@ -101,6 +101,7 @@ static struct vidcodec h264_1 = {
+ 	.dech      = avcodec_decode_h264,
+ 	.fmtp_ench = avcodec_h264_fmtp_enc,
+ 	.fmtp_cmph = avcodec_h264_fmtp_cmp,
++	.packetizeh= avcodec_packetize,
+ };
+ 
+ static struct vidcodec h263 = {
+@@ -111,6 +112,7 @@ static struct vidcodec h263 = {
+ 	.decupdh   = avcodec_decode_update,
+ 	.dech      = avcodec_decode_h263,
+ 	.fmtp_ench = h263_fmtp_enc,
++	.packetizeh= avcodec_packetize,
+ };
+ 
+ static struct vidcodec h265 = {
+@@ -120,6 +122,7 @@ static struct vidcodec h265 = {
+ 	.ench      = avcodec_encode,
+ 	.decupdh   = avcodec_decode_update,
+ 	.dech      = avcodec_decode_h265,
++	.packetizeh= avcodec_packetize,
+ };
+ 
+ 
+-- 
+2.25.1
+

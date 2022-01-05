@@ -1,0 +1,26 @@
+From 958b9486a05996b6bcbbc50724c7a934e5400151 Mon Sep 17 00:00:00 2001
+From: "Alfred E. Heggestad" <alfred.heggestad@gmail.com>
+Date: Thu, 29 Apr 2021 18:21:05 +0200
+Subject: [PATCH 2/6] avformat: fix formatting
+
+Upstream-Status: Backport [https://github.com/baresip/baresip/commit/92b64303c8b8a5feea9b811ce93b6e2defa53268]
+Signed-off-by: Alexey Brodkin <alexey.brodkin@gmail.com>
+---
+ modules/avformat/avformat.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/modules/avformat/avformat.c b/modules/avformat/avformat.c
+index c6cd6469..6ae07891 100644
+--- a/modules/avformat/avformat.c
++++ b/modules/avformat/avformat.c
+@@ -46,6 +46,7 @@ static enum AVHWDeviceType avformat_hwdevice = AV_HWDEVICE_TYPE_NONE;
+ static char avformat_inputformat[64];
+ static AVCodec *avformat_decoder;
+ 
++
+ static void shared_destructor(void *arg)
+ {
+ 	struct shared *st = arg;
+-- 
+2.25.1
+

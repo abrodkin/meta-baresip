@@ -1,0 +1,32 @@
+From dd6842fe1f31d224de2157b2bd5ef4b76911b01d Mon Sep 17 00:00:00 2001
+From: "Alfred E. Heggestad" <alfred.heggestad@gmail.com>
+Date: Thu, 29 Apr 2021 18:20:51 +0200
+Subject: [PATCH 1/6] config: add template for avformat
+
+Upstream-Status: Backport [https://github.com/baresip/baresip/commit/e1106c9d2fedd0451ee0795be1e9d6349a73c89d]
+Signed-off-by: Alexey Brodkin <alexey.brodkin@gmail.com>
+---
+ src/config.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/src/config.c b/src/config.c
+index f12dc5a3..9b9ebb36 100644
+--- a/src/config.c
++++ b/src/config.c
+@@ -1106,6 +1106,13 @@ int config_write_template(const char *file, const struct config *cfg)
+ 			 "#multicast_call_prio\t0\n"
+ 			 "#multicast_listener\t224.0.2.21:50000\n"
+ 			 "#multicast_listener\t224.0.2.21:50002\n");
++
++	(void)re_fprintf(f,
++			 "\n# avformat\n"
++			 "#avformat_hwaccel\tvaapi\n"
++			 "#avformat_inputformat\tmjpeg\n"
++			 "#avformat_decoder\tmjpeg\n");
++
+ 	if (f)
+ 		(void)fclose(f);
+ 
+-- 
+2.25.1
+

@@ -1,0 +1,96 @@
+From a03300adfee61f2ef8aa852b208dd8c80f8608b0 Mon Sep 17 00:00:00 2001
+From: "Alfred E. Heggestad" <alfred.heggestad@gmail.com>
+Date: Thu, 29 Apr 2021 18:47:04 +0200
+Subject: [PATCH 3/6] avformat: add support for rtsp_transport
+
+the patch was written by:
+
+      Media Magic Technologies <developer@mediamagictechnologies.com>
+      and Divus GmbH <developer@divus.eu>
+
+ref: https://github.com/baresip/baresip/pull/1390
+
+Upstream-Status: Backport [https://github.com/baresip/baresip/commit/f596af4936e9ae88f2d59ca26a7f594f699365c9]
+Signed-off-by: Alexey Brodkin <alexey.brodkin@gmail.com>
+---
+ modules/avformat/avformat.c | 28 ++++++++++++++++++++++++++++
+ src/config.c                |  3 ++-
+ 2 files changed, 30 insertions(+), 1 deletion(-)
+
+diff --git a/modules/avformat/avformat.c b/modules/avformat/avformat.c
+index 6ae07891..bc178c36 100644
+--- a/modules/avformat/avformat.c
++++ b/modules/avformat/avformat.c
+@@ -2,6 +2,9 @@
+  * @file avformat.c  libavformat media-source
+  *
+  * Copyright (C) 2010 - 2020 Alfred E. Heggestad
++ * Copyright (C) 2021 by:
++ *     Media Magic Technologies <developer@mediamagictechnologies.com>
++ *     and Divus GmbH <developer@divus.eu>
+  */
+ #define _DEFAULT_SOURCE 1
+ #define _BSD_SOURCE 1
+@@ -45,6 +48,7 @@ static enum AVHWDeviceType avformat_hwdevice = AV_HWDEVICE_TYPE_NONE;
+ #endif
+ static char avformat_inputformat[64];
+ static AVCodec *avformat_decoder;
++static char rtsp_transport[256] = "";
+ 
+ 
+ static void shared_destructor(void *arg)
+@@ -318,6 +322,27 @@ int avformat_shared_alloc(struct shared **shp, const char *dev,
+ 		}
+ 	}
+ 
++	if (str_isset(rtsp_transport)) {
++		ret = -1;
++
++		if ((0==strcmp(rtsp_transport, "tcp")) ||
++		    (0==strcmp(rtsp_transport, "udp")) ||
++		    (0==strcmp(rtsp_transport, "udp_multicast")) ||
++		    (0==strcmp(rtsp_transport, "http")) ||
++		    (0==strcmp(rtsp_transport, "https"))) {
++
++			ret = av_dict_set(&format_opts, "rtsp_transport",
++					  rtsp_transport, 0);
++		}
++
++		if (ret != 0) {
++			warning("avformat: av_dict_set(rtsp_transport) failed"
++				" (ret=%s)\n", av_err2str(ret));
++			err = ENOENT;
++			goto out;
++		}
++	}
++
+ 	ret = avformat_open_input(&st->ic, dev, input_format, &format_opts);
+ 	if (ret < 0) {
+ 		warning("avformat: avformat_open_input(%s) failed (ret=%s)\n",
+@@ -436,6 +461,9 @@ static int module_init(void)
+ 	conf_get_str(conf_cur(), "avformat_decoder", decoder,
+ 			sizeof(decoder));
+ 
++	conf_get_str(conf_cur(), "avformat_rtsp_transport",
++		     rtsp_transport, sizeof(rtsp_transport));
++
+ 	if (str_isset(decoder)) {
+ 		avformat_decoder = avcodec_find_decoder_by_name(decoder);
+ 		if (!avformat_decoder) {
+diff --git a/src/config.c b/src/config.c
+index 9b9ebb36..f9d87125 100644
+--- a/src/config.c
++++ b/src/config.c
+@@ -1111,7 +1111,8 @@ int config_write_template(const char *file, const struct config *cfg)
+ 			 "\n# avformat\n"
+ 			 "#avformat_hwaccel\tvaapi\n"
+ 			 "#avformat_inputformat\tmjpeg\n"
+-			 "#avformat_decoder\tmjpeg\n");
++			 "#avformat_decoder\tmjpeg\n"
++			 "#avformat_rtsp_transport\tudp\n");
+ 
+ 	if (f)
+ 		(void)fclose(f);
+-- 
+2.25.1
+

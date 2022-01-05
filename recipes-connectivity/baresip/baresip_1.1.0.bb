@@ -7,7 +7,14 @@ DEPENDS = "libre librem"
 RDEPENDS:${PN} = "libre librem"
 RRECOMMENDS:${PN} += "ca-certificates"
 
-SRC_URI = "git://github.com/baresip/baresip.git;tag=v${PV};branch=master;protocol=https"
+SRC_URI = "git://github.com/baresip/baresip.git;tag=v${PV};branch=master;protocol=https \
+    file://0001-config-add-template-for-avformat.patch \
+    file://0002-avformat-fix-formatting.patch \
+    file://0003-avformat-add-support-for-rtsp_transport.patch \
+    file://0004-Vidsrc-add-packet-handler-1402.patch \
+    file://0005-video-passthrough-1418.patch \
+    file://0006-avcodec-Enable-pass-through-for-more-codecs.patch \
+"
 
 SRC_URI[md5sum] = "8c45702b44d12c74f1790ae0766fde27"
 SRC_URI[sha256sum] = "f9230b27c4a62f31223847bc485c51f3d960f8a09f36998dedb73358e1784b4e"

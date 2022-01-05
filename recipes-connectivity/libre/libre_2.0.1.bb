@@ -33,6 +33,11 @@ EXTRA_OEMAKE += " SYSROOT=${STAGING_EXECPREFIXDIR}"
 
 inherit pkgconfig
 
+PACKAGECONFIG ??= "openssl zlib"
+
+PACKAGECONFIG[openssl] = ",,openssl"
+PACKAGECONFIG[zlib] = ",,zlib"
+
 do_configure() {
     :
 }

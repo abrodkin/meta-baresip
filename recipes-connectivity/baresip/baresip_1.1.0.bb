@@ -36,7 +36,7 @@ EXTRA_OEMAKE += " SYSROOT=${STAGING_EXECPREFIXDIR}"
 inherit pkgconfig
 
 PACKAGECONFIG ??= "\
-    amr fdk-aac ffmpeg gstreamer sdl2 \
+    amr fdk-aac ffmpeg glib gstreamer sdl2 \
     ${@bb.utils.filter('DISTRO_FEATURES', 'alsa directfb', d)} \
 "
 
@@ -48,6 +48,7 @@ PACKAGECONFIG[amr] = ",,opencore-amr"
 PACKAGECONFIG[directfb] = ",,directfb"
 PACKAGECONFIG[fdk-aac] = ",,fdk-aac"
 PACKAGECONFIG[ffmpeg] = ",,ffmpeg"
+PACKAGECONFIG[glib] = ",,glib-2.0-native"
 PACKAGECONFIG[gstreamer] = ",,gstreamer1.0"
 PACKAGECONFIG[sdl2] = ",,libsdl2"
 
